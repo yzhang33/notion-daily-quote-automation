@@ -1,0 +1,32 @@
+name: Save Daily Quote to Notion
+
+on:
+  schedule:
+    - cron: "17 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  save-daily-quote:
+    runs-on: ubuntu-latest
+
+    env:
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+      NOTION_QUOTES_DB_ID: ${{ secrets.NOTION_QUOTES_DB_ID }}
+      API_NINJAS_KEY: ${{ secrets.API_NINJAS_KEY }}
+      QUOTE_CATEGORY: ${{ secrets.QUOTE_CATEGORY }}
+      TIMEZONE: America/New_York
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Save today's categorized quote to Notion
+        run: python daily_quote.py
