@@ -29,14 +29,6 @@ def notion_post(url, payload):
     return response.json()
 
 
-def notion_patch(url, payload):
-    response = requests.patch(url, headers=NOTION_HEADERS, json=payload, timeout=30)
-    if not response.ok:
-        print("Notion API error:", response.status_code)
-        print(response.text)
-        response.raise_for_status()
-    return response.json()
-
 
 def fetch_quote_by_category(category):
     """
@@ -88,42 +80,6 @@ def fetch_quote_by_category(category):
         "source_url": "https://api.api-ninjas.com/api/quotes",
     }
 
-
-def find_existing_quote_page(today_iso, categories):
-    """
-    Prevent duplicate rows for the same date and same first category.
-    If you use multiple categories, this checks the first category.
-    """
-
-    primary_category = categories[0] if categories else QUOTE_CATEGORY
-
-    payload = {
-        "filter": {
-            "and": [
-                {
-                    "property": "Date",
-                    "date": {
-                        "equals": today_iso
-                    }
-                },
-                {
-                    "property": "Category",
-                    "multi_select": {
-                        "contains": primary_category
-                    }
-                }
-            ]
-        },
-        "page_size": 10,
-    }
-
-    data = notion_post(
-        f"https://api.notion.com/v1/databases/{QUOTES_DB_ID}/query",
-        payload,
-    )
-
-    results = data.get("results", [])
-    return results[0] if results else None
 
 
 def build_quote_properties(quote_data, today_iso):
@@ -211,30 +167,14 @@ def create_quote_page(quote_data, today_iso):
     return notion_post("https://api.notion.com/v1/pages", payload)
 
 
-def update_quote_page(page_id, quote_data, today_iso):
-    payload = {
-        "properties": build_quote_properties(quote_data, today_iso)
-    }
-
-    return notion_patch(
-        f"https://api.notion.com/v1/pages/{page_id}",
-        payload,
-    )
-
 
 def main():
     today = datetime.now(ZoneInfo(TIMEZONE)).date()
     today_iso = today.isoformat()
 
     quote_data = fetch_quote_by_category(QUOTE_CATEGORY)
-    existing_page = find_existing_quote_page(today_iso, quote_data["categories"])
-
-    if existing_page:
-        update_quote_page(existing_page["id"], quote_data, today_iso)
-        print(f"Updated quote for {today_iso}")
-    else:
-        create_quote_page(quote_data, today_iso)
-        print(f"Created quote for {today_iso}")
+    create_quote_page(quote_data, today_iso)
+    print(f"Created quote for {today_iso}")
 
     print(f"Category: {', '.join(quote_data['categories'])}")
     print(f"Quote: {quote_data['quote']}")
