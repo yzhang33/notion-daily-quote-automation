@@ -8,6 +8,7 @@ NOTION_VERSION = "2022-06-28"
 
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 QUOTES_DB_ID = os.environ["NOTION_QUOTES_DB_ID"]
+QUOTE_PAGE_ID = os.environ.get("NOTION_QUOTE_PAGE_ID", "").strip()
 API_NINJAS_KEY = os.environ["API_NINJAS_KEY"]
 
 TIMEZONE = os.environ.get("TIMEZONE", "America/New_York")
@@ -22,6 +23,33 @@ NOTION_HEADERS = {
 
 def notion_post(url, payload):
     response = requests.post(url, headers=NOTION_HEADERS, json=payload, timeout=30)
+    if not response.ok:
+        print("Notion API error:", response.status_code)
+        print(response.text)
+        response.raise_for_status()
+    return response.json()
+
+
+def notion_get(url):
+    response = requests.get(url, headers=NOTION_HEADERS, timeout=30)
+    if not response.ok:
+        print("Notion API error:", response.status_code)
+        print(response.text)
+        response.raise_for_status()
+    return response.json()
+
+
+def notion_delete(url):
+    response = requests.delete(url, headers=NOTION_HEADERS, timeout=30)
+    if not response.ok:
+        print("Notion API error:", response.status_code)
+        print(response.text)
+        response.raise_for_status()
+    return response.json()
+
+
+def notion_patch(url, payload):
+    response = requests.patch(url, headers=NOTION_HEADERS, json=payload, timeout=30)
     if not response.ok:
         print("Notion API error:", response.status_code)
         print(response.text)
@@ -168,6 +196,38 @@ def create_quote_page(quote_data, today_iso):
 
 
 
+def update_quote_on_page(page_id, quote_data):
+    # Delete all existing blocks on the page so only today's quote is shown
+    children = notion_get(f"https://api.notion.com/v1/blocks/{page_id}/children")
+    for block in children.get("results", []):
+        notion_delete(f"https://api.notion.com/v1/blocks/{block['id']}")
+
+    quote_text = quote_data["quote"]
+    author = quote_data["author"]
+    attribution = f"— {author}" if author else ""
+
+    notion_patch(
+        f"https://api.notion.com/v1/blocks/{page_id}/children",
+        {
+            "children": [
+                {
+                    "object": "block",
+                    "type": "quote",
+                    "quote": {
+                        "rich_text": [
+                            {"type": "text", "text": {"content": quote_text}, "annotations": {"bold": True}},
+                            *(
+                                [{"type": "text", "text": {"content": f"\n{attribution}"}}]
+                                if attribution else []
+                            ),
+                        ]
+                    },
+                }
+            ]
+        },
+    )
+
+
 def main():
     today = datetime.now(ZoneInfo(TIMEZONE)).date()
     today_iso = today.isoformat()
@@ -175,6 +235,10 @@ def main():
     quote_data = fetch_quote_by_category(QUOTE_CATEGORY)
     create_quote_page(quote_data, today_iso)
     print(f"Created quote for {today_iso}")
+
+    if QUOTE_PAGE_ID:
+        update_quote_on_page(QUOTE_PAGE_ID, quote_data)
+        print(f"Updated quote on page {QUOTE_PAGE_ID}")
 
     print(f"Category: {', '.join(quote_data['categories'])}")
     print(f"Quote: {quote_data['quote']}")

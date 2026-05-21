@@ -14,6 +14,7 @@ jobs:
       NOTION_QUOTES_DB_ID: ${{ secrets.NOTION_QUOTES_DB_ID }}
       API_NINJAS_KEY: ${{ secrets.API_NINJAS_KEY }}
       QUOTE_CATEGORY: ${{ secrets.QUOTE_CATEGORY }}
+      NOTION_QUOTE_PAGE_ID: ${{ secrets.NOTION_QUOTE_PAGE_ID }}
       TIMEZONE: ${{ secrets.TIMEZONE }}
 
     steps:
