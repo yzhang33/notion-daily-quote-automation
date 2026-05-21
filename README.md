@@ -1,13 +1,21 @@
 # notion-daily-quote-automation
 
-Fetches a random quote by category from [API Ninjas](https://api-ninjas.com/api/quotes) and inserts it into a Notion database daily via GitHub Actions.
+Fetches a random quote by category from [API Ninjas](https://api-ninjas.com/api/quotes) and inserts it into a Notion database daily via GitHub Actions. Optionally displays today's quote on any Notion page in a styled quote block.
+
+## Prerequisites
+
+- Python 3.11+
+- A [Notion](https://notion.so) account
+- An [API Ninjas](https://api-ninjas.com) account (free tier works)
+
+---
 
 ## Notion setup
 
-### 1. Create the database
+### 1. Create the quotes database
 
 1. In Notion, create a new page and type `/database` → select **Table - Full page**
-2. Add the following properties (the **Quote** title column already exists by default):
+2. Add the following properties (**Quote** title column exists by default):
 
    | Property   | Type         |
    | ---------- | ------------ |
@@ -19,37 +27,43 @@ Fetches a random quote by category from [API Ninjas](https://api-ninjas.com/api/
    | Source     | URL          |
    | Created By | Select       |
 
-3. Copy the **database ID** from the URL:
+3. Copy the **database ID** from the URL — it's the 32-character string before `?v=`:
    ```
-   https://www.notion.so/<workspace>/<DATABASE_ID>?v=...
+   https://www.notion.so/<DATABASE_ID>?v=...
    ```
-   The DATABASE_ID is the 32-character string before `?v=`. This is your `NOTION_QUOTES_DB_ID`.
 
 ### 2. Create a Notion integration
 
-1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and click **New integration**
-2. Give it a name (e.g. `daily-quotes-connection`) and select your workspace
-3. Click **Save** → copy the **Internal Integration Token** — this is your `NOTION_TOKEN`
+1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) → **New integration**
+2. Name it (e.g. `daily-quotes-connection`), select your workspace, and click **Save**
+3. Copy the **Internal Integration Token** — this is your `NOTION_TOKEN`
 
-### 3. Connect the integration to your database
+### 3. Connect the integration
 
-1. Open your quotes database in Notion
-2. Click **`...`** (top-right) → **Connections** → **Connect to** → select your integration
-3. If the database is embedded inside another page, open that **parent page** and connect the integration there instead
+Connect the integration to every Notion page it needs to access:
+
+- **Quotes database** — open the database → **`...`** → **Connections** → **Connect to** → select your integration
+- **Quote display page** *(optional)* — if you want today's quote shown on a separate page, connect the integration to that page the same way
+
+> If your database or page is embedded inside another page, connect the integration to the **parent page** instead.
+
+---
 
 ## Local setup
 
 1. Install dependencies:
-   ```
+   ```bash
    pip install -r requirements.txt
    ```
 
 2. Copy `.env.example` to `.env` and fill in your credentials:
-   ```
+   ```bash
    cp .env.example .env
    ```
 
-3. Run the script (PowerShell / Windows):
+3. Run the script:
+
+   **Windows (PowerShell)**
    ```powershell
    Get-Content .env | ForEach-Object {
        if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
@@ -59,21 +73,36 @@ Fetches a random quote by category from [API Ninjas](https://api-ninjas.com/api/
    python daily_quote.py
    ```
 
-   Or on Linux/macOS:
+   **Linux / macOS**
    ```bash
    export $(grep -v '^#' .env | xargs)
    python daily_quote.py
    ```
 
-## GitHub Actions secrets
+---
 
-Add these secrets to your repository (Settings → Secrets and variables → Actions):
+## GitHub Actions setup
 
-| Secret                | Description                              |
-| --------------------- | ---------------------------------------- |
-| `NOTION_TOKEN`        | Notion integration token                 |
-| `NOTION_QUOTES_DB_ID` | Notion database ID                       |
-| `API_NINJAS_KEY`      | API Ninjas API key                       |
-| `QUOTE_CATEGORY`      | Quote category (e.g. `wisdom`, optional) |
+Add these secrets to your repository under **Settings → Secrets and variables → Actions**:
 
-The workflow runs daily at 12:17 UTC and can also be triggered manually via **workflow_dispatch**.
+| Secret                  | Required | Description                                          |
+| ----------------------- | -------- | ---------------------------------------------------- |
+| `NOTION_TOKEN`          | Yes      | Notion integration token                             |
+| `NOTION_QUOTES_DB_ID`   | Yes      | Notion quotes database ID                            |
+| `API_NINJAS_KEY`        | Yes      | API Ninjas API key                                   |
+| `QUOTE_CATEGORY`        | No       | Quote category, e.g. `wisdom` (default: `wisdom`)    |
+| `NOTION_QUOTE_PAGE_ID`  | No       | Page ID to display today's quote as a styled block   |
+| `TIMEZONE`              | No       | Timezone for the date (default: `America/New_York`)  |
+
+The workflow runs daily at **12:17 UTC** and can also be triggered manually via **workflow_dispatch**.
+
+---
+
+## How it works
+
+1. Fetches a random quote from API Ninjas for the configured category
+2. Creates a new row in the Notion quotes database with the quote, author, date, and category
+3. If `NOTION_QUOTE_PAGE_ID` is set, replaces the content of that page with today's quote in a styled block:
+
+   > **Quote text**
+   > — Author
