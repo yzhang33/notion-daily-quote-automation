@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "17 12 * * *"
   workflow_dispatch:
+    inputs:
+      quote_category:
+        description: "Quote category (e.g. wisdom, motivation, success)"
+        required: false
+        default: "wisdom"
+      timezone:
+        description: "Timezone (e.g. America/New_York, Asia/Tokyo)"
+        required: false
+        default: "America/New_York"
 
 jobs:
   save-daily-quote:
@@ -13,9 +22,9 @@ jobs:
       NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
       NOTION_QUOTES_DB_ID: ${{ secrets.NOTION_QUOTES_DB_ID }}
       API_NINJAS_KEY: ${{ secrets.API_NINJAS_KEY }}
-      QUOTE_CATEGORY: ${{ secrets.QUOTE_CATEGORY }}
       NOTION_QUOTE_PAGE_ID: ${{ secrets.NOTION_QUOTE_PAGE_ID }}
-      TIMEZONE: ${{ secrets.TIMEZONE }}
+      QUOTE_CATEGORY: ${{ inputs.quote_category || secrets.QUOTE_CATEGORY || 'wisdom' }}
+      TIMEZONE: ${{ inputs.timezone || secrets.TIMEZONE || 'America/New_York' }}
 
     steps:
       - name: Check out repository
